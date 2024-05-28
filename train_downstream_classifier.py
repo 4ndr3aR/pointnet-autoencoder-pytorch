@@ -30,6 +30,7 @@ parser.add_argument("--dataset_path", type=str, default='/tmp'     , help="Path 
 parser.add_argument("--nepoch"      , type=int, default=500        , help="Number of Epochs to train for")
 parser.add_argument("--nclasses"    , type=int, default=2          , help="Number of classes in the classification problem")
 parser.add_argument("--load_model"  , type=str, default='model.pth', help="The pretrained model to be loaded")
+parser.add_argument("--debug"       , type=int, default='0'        , help="Enable verbose debug prints")
 
 #saved_models/gpo/autoencoder_43.pth
 
@@ -88,7 +89,7 @@ print(f'{sample[0].shape = } - {sample[1] = } - {sample[2] = }\n{sample[0] = }')
 
 # Creating Model
 
-autoencoder = PCAutoEncoder(point_dim, out_num_points=num_points,    out_point_dim=3)  # because we have pretrained on 3x10000 input -> 3x10000 output
+autoencoder = PCAutoEncoder(point_dim, out_num_points=num_points, out_point_dim=3, reshape_last_layer=False)		# because we have pretrained on 3x10000 input -> 3x10000 output
 #classifier  = PCAutoEncoder(point_dim, out_num_points=args.nclasses, out_point_dim=1) # because on the downstream task we want 3x10000 input -> 1x14 output (classification)
 print(f'{autoencoder = }')
 if args.load_model:
@@ -121,35 +122,48 @@ os.makedirs('saved_models', exist_ok=True)
 
 # create instance of Chamfer Distance Loss Instance
 chamfer_dist = ChamferDistance()
-crossentropy = torch.nn.BCELoss()
+crossentropy = torch.nn.CrossEntropyLoss()
 
 # Start the Training 
 for epoch in range(args.nepoch):
-    for i, data in enumerate(train_dl):
-        points, labels, true_nsyms = data
-        print(f'BEFORE {points.shape = }')
-        points = points.transpose(2, 1)
-        print(f'AFTER  {points.shape = }')
-        # points = points.cuda()
-        optimizer.zero_grad()
-        pred_nsyms, global_feat = autoencoder(points)
+	for i, data in enumerate(train_dl):
+		points, labels, true_nsyms = data
+		#print(f'BEFORE {points.shape = }')
+		points = points.transpose(2, 1)
+		#print(f'AFTER  {points.shape = }')
+		# points = points.cuda()
+		optimizer.zero_grad()
 
-        #dist1, dist2 = chamfer_dist(points, reconstructed_points)
-        #train_loss = (torch.mean(dist1)) + (torch.mean(dist2))
+		pred_nsyms, global_feat = autoencoder(points)
+		pred_lbls = torch.argmax(pred_nsyms, dim=1)
 
-        print(f'{pred_nsyms.shape = }')
-        print(f'{true_nsyms.shape = }')
-        print(f'{pred_nsyms = }')
-        print(f'{true_nsyms = }')
+		'''
+		pred_logits, global_feat = autoencoder(points)
+		pred_nsyms = torch.softmax(pred_logits, dim=1)
 
-        train_loss = crossentropy(input=pred_nsyms, target=true_nsyms)
+		#dist1, dist2 = chamfer_dist(points, reconstructed_points)
+		#train_loss = (torch.mean(dist1)) + (torch.mean(dist2))
 
-        print(f"Epoch: {epoch}, Iteration#: {i}, Train Loss: {train_loss}")
-        # Calculate the gradients using Back Propogation
-        train_loss.backward() 
+		print(f'{pred_logits.shape = }')
+		print(f'{pred_logits = }')
+		'''
 
-        # Update the weights and biases 
-        optimizer.step()
+		if args.debug or i % 100 == 0:
+			#print(f'{pred_nsyms.shape = }')
+			print(f'{pred_lbls.shape = }')
+			print(f'{true_nsyms.shape = }')
+			#print(f'{pred_nsyms = }')
+			print(f'{pred_lbls = }')
+			print(f'{true_nsyms = }')
 
-    scheduler.step()
-    torch.save(autoencoder.state_dict(), 'saved_models/autoencoder_%d.pth' % (epoch))
+		train_loss = crossentropy(input=pred_nsyms, target=true_nsyms)
+
+		print(f"Epoch: {epoch}, Iteration#: {i}, Train Loss: {train_loss}")
+		# Calculate the gradients using Back Propogation
+		train_loss.backward() 
+
+		# Update the weights and biases 
+		optimizer.step()
+
+	scheduler.step()
+	torch.save(autoencoder.state_dict(), 'saved_models/fine_tuned_autoencoder_%d.pth' % (epoch))
