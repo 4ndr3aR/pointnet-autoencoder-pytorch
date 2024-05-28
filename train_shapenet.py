@@ -51,7 +51,7 @@ test_ds  = sym_ds.valid_set
 sym_ds.train()
 
 def collate_fn(data, debug=False):
-	pcd_lst, lbl_lst = zip(*data)
+	pcd_lst, lbl_lst, _ = zip(*data)
 	if debug:
 		print(f'{pcd_lst = }')
 		print(f'{lbl_lst = }')
@@ -77,7 +77,7 @@ print(f'{sample[0].shape = } - {sample[1]}\n{sample[0] = }')
 
 # Creating Model
 
-autoencoder = PCAutoEncoder(point_dim, num_points)
+autoencoder = PCAutoEncoder(point_dim, num_points, out_point_dim=point_dim)
 
 # It is recommented to move the model to GPU before constructing optimizers for it. 
 # This link discusses this point in detail - https://discuss.pytorch.org/t/effect-of-calling-model-cuda-after-constructing-an-optimizer/15165/8
