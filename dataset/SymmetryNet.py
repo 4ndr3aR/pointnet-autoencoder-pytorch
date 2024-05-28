@@ -183,6 +183,11 @@ class SymmetryNet(Dataset):
         time1 = time.time()
         x, label = self.read_points(index)
         syms = self.read_planes(index)
+        nsyms = syms[0].shape[0]		# only planar syms
+        if self.debug:
+            print(f'{syms = }')
+            fname, cls = self._filename_from_idx(index)
+            print(f'{fname = } has {nsyms} planes')
         time2 = time.time()
         '''
         label = os.path.split(x)[1].split('_')[0]
@@ -207,7 +212,7 @@ class SymmetryNet(Dataset):
             print(f'{(time2 - time1):.3f} seconds')
             print(f'{(time3 - time2):.3f} seconds')
             print(f'{(time4 - time3):.3f} seconds')
-        return x, torch.tensor([label], dtype=torch.long), torch.tensor(len(syms))
+        return x, torch.tensor([label], dtype=torch.long), torch.tensor(nsyms)
 
     def train(self):
         self.training = True

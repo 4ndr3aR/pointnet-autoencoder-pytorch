@@ -30,6 +30,7 @@ parser.add_argument("--dataset_path", type=str, default='/tmp'     , help="Path 
 parser.add_argument("--nepoch"      , type=int, default=500        , help="Number of Epochs to train for")
 parser.add_argument("--nclasses"    , type=int, default=2          , help="Number of classes in the classification problem")
 parser.add_argument("--load_model"  , type=str, default='model.pth', help="The pretrained model to be loaded")
+parser.add_argument("--freeze"      , type=int, default='0'        , help="Freeze all the layers in the network except the last one")
 parser.add_argument("--debug"       , type=int, default='0'        , help="Enable verbose debug prints")
 
 #saved_models/gpo/autoencoder_43.pth
@@ -96,8 +97,9 @@ if args.load_model:
 	print(f'Loading model: {args.load_model}')
 	#torch.load(args.load_model)
 	autoencoder.load_state_dict(torch.load(args.load_model))
-	for param in autoencoder.parameters():
-		param.requires_grad = False
+	if args.freeze != 0:
+		for param in autoencoder.parameters():
+				param.requires_grad = False
 	fc3_in_features = 1024
 	# add more layers as required
 	#classifier = torch.nn.Sequential(OrderedDict([('fc3', torch.nn.Linear(fc3_in_features, args.nclasses))]))
